@@ -27,6 +27,6 @@ public final class Constant {
     /**
      * 企业微信群机器人的Webhook，key换成自己的
      */
-    public static final String WE_COM_WEBHOOK = "https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=939eb5bb-3f95-4b47-954c-526c629f6431";
+    public static final String WE_COM_WEBHOOK = "";
 
 }
