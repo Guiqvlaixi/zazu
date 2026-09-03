@@ -1,7 +1,8 @@
 # zazu
 
-阿里云 RocketMQ 5.x「订阅关系不一致」巡检员儿。
+阿里云 RocketMQ 5.x「订阅关系不一致」巡检员儿。  
 
+阿里云开放接口文档：https://api.aliyun.com/api/RocketMQ
 定时扫描指定 MQ 实例下的所有消费组，找出订阅关系不一致的消费组，并把结果以 markdown 消息推送到企业微信群机器人。
 
 ## 运行前必须做的两件事
