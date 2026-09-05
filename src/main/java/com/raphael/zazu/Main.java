@@ -14,6 +14,8 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
@@ -24,10 +26,11 @@ import java.util.stream.Collectors;
  */
 public class Main {
 
-    public static void main(String[] args) {
-        ScheduledThreadPoolExecutor executor = new ScheduledThreadPoolExecutor(1);
+    static final ScheduledThreadPoolExecutor EXECUTOR = new ScheduledThreadPoolExecutor(1);
+
+    static void main(String[] args) {
         Runnable task = new Task();
-        executor.scheduleAtFixedRate(task, 0, 5, TimeUnit.MINUTES);
+        EXECUTOR.scheduleAtFixedRate(task, 0, 5, TimeUnit.MINUTES);
     }
 
     public static class Task implements Runnable {
@@ -39,28 +42,42 @@ public class Main {
             try {
                 /* 获取所有MQ实例 */
                 List<ListInstancesResponseBody.List> instances = new ListInstancesReq().call();
-                for (ListInstancesResponseBody.List instance : instances) {
-                    String instanceId = instance.getInstanceId();
-                    SubscriptAlarm alarm = new SubscriptAlarm(instanceId, instance.getRemark());
 
-                    /* 该实例下所有消费组 */
-                    List<ListConsumerGroupsResponseBody.List> groups = new ListGroupsReq().call(instanceId);
-                    for (ListConsumerGroupsResponseBody.List group : groups) {
-                        String groupId = group.getConsumerGroupId();
-                        Set<String> topics = noConsistencyTopics(instanceId, groupId);
-                        if (!topics.isEmpty()) {
-                            alarm.addGroup(groupId, group.getRemark(), topics);
-                        }
-                    }
-
-                    /* 通知 */
-                    if (!alarm.isEmpty()) {
-                        new WeComPushReq().call(alarm);
+                /* 本进程反正也没任何别的任务，虚拟线程直接挂载到默认线程池 */
+                try (
+                    ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor();
+                ) {
+                    for (ListInstancesResponseBody.List instance : instances) {
+                        Runnable runnable = runnable(instance);
+                        executor.submit(runnable);
                     }
                 }
             } catch (Exception e) {
                 LOG.error("[MainTaskEx]", e);
             }
+        }
+
+        private Runnable runnable(ListInstancesResponseBody.List instance) {
+            return  () -> {
+                String instanceId = instance.getInstanceId();
+
+                SubscriptAlarm alarm = new SubscriptAlarm(instanceId, instance.getRemark());
+
+                /* 该实例下所有消费组 */
+                List<ListConsumerGroupsResponseBody.List> groups = new ListGroupsReq().call(instanceId);
+                for (ListConsumerGroupsResponseBody.List group : groups) {
+                    String groupId = group.getConsumerGroupId();
+                    Set<String> topics = noConsistencyTopics(instanceId, groupId);
+                    if (!topics.isEmpty()) {
+                        alarm.addGroup(groupId, group.getRemark(), topics);
+                    }
+                }
+
+                /* 通知 */
+                if (!alarm.isEmpty()) {
+                    new WeComPushReq().call(alarm);
+                }
+            };
         }
 
         /**

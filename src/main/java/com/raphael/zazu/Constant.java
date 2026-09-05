@@ -22,7 +22,7 @@ public final class Constant {
     /**
      * 需要检测的实例
      */
-    public static final List<String> INSTANCES_NAMES = Collections.singletonList("测试开发");
+    public static final List<String> INSTANCES_NAMES = Collections.emptyList();
 
     /**
      * 企业微信群机器人的Webhook，key换成自己的
