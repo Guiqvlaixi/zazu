@@ -58,7 +58,7 @@ public class Main {
         }
 
         private Runnable runnable(ListInstancesResponseBody.List instance) {
-            return  () -> {
+            return () -> {
                 String instanceId = instance.getInstanceId();
 
                 SubscriptAlarm alarm = new SubscriptAlarm(instanceId, instance.getRemark());
